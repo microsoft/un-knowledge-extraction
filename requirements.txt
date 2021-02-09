@@ -1,0 +1,11 @@
+pandas
+numpy
+nltk
+re
+string
+spacy
+gensim
+scipy
+collections
+matplotlib
+difflib
