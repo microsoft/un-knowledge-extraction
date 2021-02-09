@@ -1,14 +1,10 @@
-# Project: Automatic Information Extraction and Knowledge Elicitation for United Nations Documents
+# Automatic Information Extraction and Knowledge Elicitation for United Nations Documents
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+Context: The processing of considerable and rapidly growing amount of information within UN system is left to the very limited human capacities. The UN system produces a substantial amount of information that, if effectively mobilized, could greatly enhance the effectiveness and efficiency of the UN system.
 
-As the maintainer of this project, please make a few updates:
+Goal: The goal is to pilot Microsoft Cognitive Services to unlock the strategic value of UN unstructured content by building on AI and semantic technologies. The idea is to showcase the innovative smart services that natural language processing and machine learning to effectively support policy and decision making, coordination, synergies and accountability.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+Data: UN General Assembly Resolutions (English only) between 2009 and 2018. In total 3138 resolution files in pdf format.
 
 ## Contributing
 
