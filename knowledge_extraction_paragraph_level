@@ -17,8 +17,6 @@ from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
 import re
 import string
-## pip install spacy
-## python -m spacy download en
 import spacy
 spacy_nlp = spacy.load('en')
 import gensim
@@ -37,10 +35,6 @@ output_dir = current_dir + "Output/"
 UN_DOCS_Paragraphs = pd.read_csv(data_dir + "UN_RES_DOCS_2009_2018.csv").fillna('').reset_index(drop=True)
 w2v_google = gensim.models.KeyedVectors.load_word2vec_format(data_dir + 'GoogleNews-vectors-negative300.bin.gz', binary=True)
 
-
-###########################################################################################################################
-##### paragraph level:  first action verb, paragraph type, key terms, referenced resolutions, dates, SDG, targets  ########
-###########################################################################################################################
 
 UNBIS_terms = pd.read_csv(data_dir + "UNBIS_terms.csv", encoding='cp1252')
 UNBIS_terms = [term.lower() for term in UNBIS_terms['Term'].unique().tolist()]
@@ -67,7 +61,6 @@ for SDG in SDG_Targets_Indicators_High_Frequency_Words.keys():
     print(SDG, SDG_Targets_Indicators_High_Frequency_Words[SDG])
 
 
-## complete list from terminology bulletin
 preambular_verb_list = [
         'acknowledging',
         'acting',
@@ -123,11 +116,11 @@ preambular_verb_list = [
         'indignant',
         'holding',
         'hopeful',
-        'conformity',  ## in conformity
-        'pursuance',  ## in pursuance
+        'conformity',  
+        'pursuance',  
         'inspired',
         'invoking',
-        'opinion', ## is of the opinion that
+        'opinion',
         'keeping',
         'mindful',
         'observing',
@@ -158,7 +151,6 @@ preambular_verb_list = [
         'preventing',
         ]
 
-## updates this with terminology bulletin
 operative_verb_list = [
         'accept', 'accepts',
         'recommend', 'recommends',
@@ -168,8 +160,8 @@ operative_verb_list = [
         'proclaim', 'proclaims',
         'affirm', 'affirms',
         'appeal', 'appeals',
-        'call', 'calls',  ## calls upon
-        'draw', 'draws',  ## draws the attention
+        'call', 'calls', 
+        'draw', 'draws',  
         'pledge', 'pledges',
         'reiterate', 'reiterates',
         'request', 'requests',
@@ -230,7 +222,7 @@ operative_verb_list = [
         'insist', 'insists',
         'instruct', 'instructs',
         'invite', 'invites',
-        'look', 'looks',  ## looks forward
+        'look', 'looks', 
         'make', 'makes',
         'mandate', 'mandates',
         'offer', 'offers',
@@ -276,25 +268,22 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
     if index % 10000 == 0:
         print(index)
     Content = row['Content'].replace('\t',' ')
-    Content = ''.join(filter(lambda x:x in string.printable, Content)) ## remove non-printable characters (such as \x02)
-    Content = Content.translate(str.maketrans('', '', '(),:;?@{|}~.')) ## remove common punctuations
-    Content = Content.translate(str.maketrans('', '', string.digits)) ## remove digits
+    Content = ''.join(filter(lambda x:x in string.printable, Content))
+    Content = Content.translate(str.maketrans('', '', '(),:;?@{|}~.'))
+    Content = Content.translate(str.maketrans('', '', string.digits))
     tokenized_word = word_tokenize(Content.lower())
-    Content_space_seperated = " " +  " ".join(tokenized_word) + " " ## seperate each word with space, and add space in both ends of paragraph              
+    Content_space_seperated = " " +  " ".join(tokenized_word) + " "        
     word_count = len(tokenized_word)
 
 
     if row['Type'] == 'Paragraph' and word_count >= 10:
-        ## first action verb
         first_action_verb = ''
         try:
-            ## choose the first action verb from the first 10 words of each paragraph
             first_action_verb = next(word for word in tokenized_word[:10] if word in preambular_verb_list + operative_verb_list)
         except Exception:
             pass    
-        if Content[0].islower() == False: ## don't assign to rows that start with lowercase letters (i.e, not complete sentence)
+        if Content[0].islower() == False:
             UN_DOCS_Paragraphs.loc[index, 'First_Action_Verb'] = first_action_verb
-        ## paragraph_type
         if first_action_verb in preambular_verb_list and Content[0].islower() == False:
             UN_DOCS_Paragraphs.loc[index, 'Paragraph_Type'] = 'preambular'
         elif first_action_verb in operative_verb_list and Content[0].islower() == False:
@@ -304,7 +293,7 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
             previous_paragraph_types_non_empty = [x for x in previous_paragraph_types if x != '']
             if len(previous_paragraph_types_non_empty) >= 1:
                 UN_DOCS_Paragraphs.loc[index, 'Paragraph_Type'] = previous_paragraph_types_non_empty[-1]
-        ## key_terms                
+             
         matching_terms = list(set([term for term in UNBIS_terms if " " + term + " " in Content_space_seperated]))
         matching_terms.sort(key=len, reverse=True)
         key_terms = []
@@ -314,18 +303,7 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
                     key_terms.append(matching_terms[i])
                     Content = Content.replace(matching_terms[i], '')
         UN_DOCS_Paragraphs.at[index, 'Key_Terms'] = key_terms
-        ## Referenced_Resolutions   
-        # there are different patterns of referencing previsou resolutions:
-        # example:
-        # 'resolution 1542 (2004) of 30 April 2004'
-        # 'resolution 62.10 of 22 May 2009'
-        # 'resolution 58/311 of 18 June 2004'
-        # 'resolution S-8/2 of 21 April 1978'
-        # 'resolution 64/248'
-        # 'resolution 973 (X)'
-        # 'resolutions 1874 (S-IV) of 27 June 1963, 3101 (XXVIII) of 11 December 1973 and 55/235 of 23 December 2000'
-        # 'resolutions 51/233, 52/237, 53/227, 54/267, 55/180 A, 55/180 B, 56/214 A, 56/214 B, 57/325, 58/307, 59/307, 60/278, 61/250 A, 61/250 B, 61/250 C, 62/265, 63/298 and 64/282'
-        # 'Recalling its resolutions 2252 (ES-V) of 4 July 1967, 2341 B (XXII) of 19 December 1967 and all subsequent related resolutions'
+        
         Referenced_Resolutions = re.findall(r'resolutions \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)* .* and all subsequent related resolutions|resolutions \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)* of [0-9]{1,2} [A-Za-z]{3,9} [0-9]{4}.* and \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)* of [0-9]{1,2} [A-Za-z]{3,9} [0-9]{4}|resolutions \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)* and \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)* of [0-9]{1,2} [A-Za-z]{3,9} [0-9]{4}|resolution \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)* of [0-9]{1,2} [A-Za-z]{3,9} [0-9]{4}|resolutions \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)*.* and \w*-*\d+[/]*\d+\s*\(*\w*-*\w*\)* of [0-9]{1,2} [A-Za-z]{3,9} [0-9]{4}|resolutions \w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)*.* and \w*-*\d+[/]*\d+\s*\(*\w*-*\w*\)*|resolution \w*-*\d+[/]*[.]*\d+ \(\w*-*\w*\)|resolution \w*-*\d+[/]*[.]*\d+', Content)
         Referenced_Resolutions_Dates = []
         for referenced_resolution in Referenced_Resolutions:
@@ -343,13 +321,13 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
             referenced_resolution = re.sub(' December ', '/12/', referenced_resolution)   
             referenced_resolution_split = re.split(',|and', referenced_resolution)
             for resolution in referenced_resolution_split:
-                if bool(re.search('resolution\w* (.*) of ([0-9]{1,2}/[0-9]{2}/[0-9]{4})', resolution)): ## contains "resolution" and "of"
+                if bool(re.search('resolution\w* (.*) of ([0-9]{1,2}/[0-9]{2}/[0-9]{4})', resolution)):
                     resolution_number = re.findall(r'resolution\w* (.*) of', resolution)[0]
                     date = re.findall(r'of ([0-9]{1,2}/[0-9]{2}/[0-9]{4})', resolution)[0]
-                elif bool(re.search('\s*(.*) of ([0-9]{1,2}/[0-9]{2}/[0-9]{4})', resolution)):         ## contains "of"
+                elif bool(re.search('\s*(.*) of ([0-9]{1,2}/[0-9]{2}/[0-9]{4})', resolution)):       
                     resolution_number = re.findall(r'\s*(.*) of', resolution)[0]
                     date = re.findall(r'of ([0-9]{1,2}/[0-9]{2}/[0-9]{4})', resolution)[0]  
-                elif bool(re.search('resolution\w* (.*)', resolution)):                                ## contains "resolution"
+                elif bool(re.search('resolution\w* (.*)', resolution)):                         
                     resolution_number = re.findall(r'resolution\w* (.*)', resolution)[0]
                     date = 'NA'    
                 elif bool(re.search('\w*-*\d+[/]*[.]*\d+\s*\(*\w*-*\w*\)*', resolution)):
@@ -358,7 +336,7 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
                 Referenced_Resolutions_Dates[resolution_number] = date
         UN_DOCS_Paragraphs.at[index, 'Referenced_Resolutions'] = Referenced_Resolutions
         UN_DOCS_Paragraphs.at[index, 'Referenced_Resolutions_Dates'] = Referenced_Resolutions_Dates
-        ## SDG
+
         if any(x in tokenized_word for x in ['poverty', 'poor']):
             UN_DOCS_Paragraphs.at[index, 'SDG'].append('No Poverty')
         elif any(x in Content.lower() for x in ['hunger', 'hungry', 'malnutrition', 'food crisis', 'sufficient food', 'food producers', 'food production', 'food reserves', 'food price', 'food insecurity', 'food security', 'undernutrition']):
@@ -394,8 +372,6 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
         elif any(x in tokenized_word for x in ['partner', 'partners', 'partnership', 'partnerships']):
             UN_DOCS_Paragraphs.at[index, 'SDG'].append('Partnerships for the Goals')
 
-
-## infer SDG Targets and Indicators
 w2v_Targets = []
 w2v_Indicators = []
 Targets_isalpha = []
@@ -425,7 +401,7 @@ for i in range(len(Indicators)):
 def Common_Substring(string1, string2):
     substrings = []
     matches = difflib.SequenceMatcher(None, string1, string2).get_matching_blocks()
-    for match in sorted(matches, key=lambda x: x[2], reverse=True):  ### sort by length of common strings
+    for match in sorted(matches, key=lambda x: x[2], reverse=True):  
         substrings.append(string1[match.a:match.a + match.size])
     return substrings
 
@@ -448,33 +424,33 @@ for row_index in range(len(UN_DOCS_Paragraphs)):
         tokenized_word = [word for word in tokenized_word if word.isalpha()]
         paragraph_isalpha = ' '.join(tokenized_word)
 
-        similarity_with_target_common_substring = [] # for each paragraph, find its longest common substring with each target, and calculate the similarity score between paragraph and lcs       
+        similarity_with_target_common_substring = [] 
         for i in range(len(Targets_isalpha)):
             paragraph_target_common_substring = Common_Substring(paragraph_isalpha, Targets_isalpha[i])
-            if len(paragraph_target_common_substring) == 0:  ## no common words
+            if len(paragraph_target_common_substring) == 0:  
                 similarity_with_target_common_substring.append(0.0)
             elif len(paragraph_target_common_substring) >= 1:
-                paragraph_target_common_substring = paragraph_target_common_substring[:3] ## if there are multiple common substrings, choose the first three lcs 
+                paragraph_target_common_substring = paragraph_target_common_substring[:3] 
                 paragraph_target_common_substring_aggregated = ' '.join(paragraph_target_common_substring)
                 words_common_substring = paragraph_target_common_substring_aggregated.split()
-                words_common_substring = [word for word in words_common_substring if word in tokenized_word]  ## remove the "common substring" that are partial-words or single letters from paragraphs
+                words_common_substring = [word for word in words_common_substring if word in tokenized_word]
                 words_common_substring_in_vocab = [word for word in words_common_substring if word in w2v_google.vocab]
                 if len(words_common_substring_in_vocab) >= 1:
                     w2v_common_substring = np.sum(w2v_google[words_common_substring_in_vocab], axis=0) 
                     similarity_with_target_common_substring.append(1 - spatial.distance.cosine(w2v_Targets[i], w2v_common_substring))
-                else:  ## none of the words in common substring are in vocab
+                else: 
                     similarity_with_target_common_substring.append(len(words_common_substring) / len(Targets_isalpha[i].split()))
 
-        similarity_with_indicator_common_substring = [] # for each paragraph, find its longest common substring with each indicator, and calculate the similarity score between paragraph and lcs       
+        similarity_with_indicator_common_substring = [] 
         for i in range(len(Indicators_isalpha)):
             paragraph_indicator_common_substring = Common_Substring(paragraph_isalpha, Indicators_isalpha[i])
-            if len(paragraph_indicator_common_substring) == 0:  ## no common words
+            if len(paragraph_indicator_common_substring) == 0: 
                 similarity_with_indicator_common_substring.append(0.0)
             elif len(paragraph_indicator_common_substring) >= 1:
-                paragraph_indicator_common_substring = paragraph_indicator_common_substring[:3] ## if there are multiple common substrings, choose the first three lcs 
+                paragraph_indicator_common_substring = paragraph_indicator_common_substring[:3]
                 paragraph_indicator_common_substring_aggregated = ' '.join(paragraph_indicator_common_substring)
                 words_common_substring = paragraph_indicator_common_substring_aggregated.split()
-                words_common_substring = [word for word in words_common_substring if word in tokenized_word]  ## remove the "common substring" that are partial-words or single letters from paragraphs
+                words_common_substring = [word for word in words_common_substring if word in tokenized_word]
                 words_common_substring_in_vocab = [word for word in words_common_substring if word in w2v_google.vocab]
                 if len(words_common_substring_in_vocab) >= 1:
                     w2v_common_substring = np.sum(w2v_google[words_common_substring_in_vocab], axis=0) 
@@ -503,16 +479,9 @@ for row_index in range(len(UN_DOCS_Paragraphs)):
 
 
 
-
-###########################################################################################################################
-###################################### paragraph level:  country names, organizations  ####################################
-###########################################################################################################################
-
-### country names
 country_list = pd.read_excel(data_dir + "country_list.xlsx").fillna('')
 country_names = [country.strip().replace('&', 'and') for country in country_list['Country'].tolist()]
 
-### known organization names ###
 UN_agencies = pd.read_excel(data_dir + "agencies.xlsx").fillna('')
 UN_known_orgs = pd.read_excel(data_dir + "un_entities_20191017.xlsx").fillna('')
 
@@ -543,10 +512,10 @@ known_un_org_list = list(set(
 known_un_org_list = [x for x in known_un_org_list if x not in country_names]
 
 
-known_un_org_list = [org.translate(str.maketrans('', '', ',;:."')) for org in known_un_org_list] ## remove common punctuations
-#known_un_org_list = [re.sub(r'[^\x00-\x7F]+',' ', org) for org in known_un_org_list] ## replace non-printable characters (such as \x02) with space
-known_un_org_list = [''.join([x if x in string.printable else '' for x in org]) for org in known_un_org_list] ## replace non-printable characters (such as \x02) with space
-known_un_org_list = [' '.join(w for w in org.split()) for org in known_un_org_list]  ## remove leading and trailing spaces
+known_un_org_list = [org.translate(str.maketrans('', '', ',;:."')) for org in known_un_org_list]
+#known_un_org_list = [re.sub(r'[^\x00-\x7F]+',' ', org) for org in known_un_org_list]
+known_un_org_list = [''.join([x if x in string.printable else '' for x in org]) for org in known_un_org_list] 
+known_un_org_list = [' '.join(w for w in org.split()) for org in known_un_org_list]
 
 known_un_org_w2v = dict()
 for org in known_un_org_list:
@@ -558,7 +527,6 @@ for org in known_un_org_list:
         known_un_org_w2v[org] = np.asarray([])
 
 
-## key words that indicating organizations
 key_words_un_org_list = [ 
         'Committee',
         'Council',
@@ -579,7 +547,6 @@ key_words_un_org_list = [
         'Subcommittee',
         ]
 
-## key words that indicating not organizations
 key_words_not_un_org_list = [
         'Goal',
         'Goals',
@@ -730,7 +697,7 @@ key_words_not_un_org_list = [
         'Need of Assistance',
         'Olympic Truce',
         'Mutual Understanding',
-        'Tapta',   ## The system (called TAPTA4UN) has been trained on extensive parallel corpora in 6 languages
+        'Tapta',  
         'Census',
         'Sport for Development and Peace',
         'Campaign',
@@ -745,7 +712,6 @@ key_words_not_un_org_list = [
         ]
 
 
-########################################## step 1: count the number of words in each paragraph ##############################################
 UN_DOCS_Paragraphs['word_cnt'] = 0
 UN_DOCS_Paragraphs['Content_clean'] = ''
 
@@ -753,13 +719,12 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
     if index % 10000 == 0:
         print(index)
     Content = row['Content'].replace('\t',' ')
-    Content = Content.replace(',',', ') ## add one space after the punctuation ','
-    Content = Content.replace(';','; ') ## add one space after the punctuation ';'    
-    Content = Content.replace('.','. ') ## add one space after the punctuation '.'    
+    Content = Content.replace(',',', ') 
+    Content = Content.replace(';','; ')     
+    Content = Content.replace('.','. ')
     Content = re.sub(r'[0-9]{1,2}.', ' ', Content)
-    #Content = re.sub(r'[^\x00-\x7F]+',' ', Content) ## replace non-printable characters (such as \x02) with space
-    Content = ''.join([x if x in string.printable else '' for x in Content]) ## replace non-printable characters (such as \x02) with space
-    Content = ' '.join(w for w in Content.split() if not any(x.isdigit() for x in w))  ## remove words that include digits, and remove leading and trailing spaces
+    Content = ''.join([x if x in string.printable else '' for x in Content])
+    Content = ' '.join(w for w in Content.split() if not any(x.isdigit() for x in w)) 
     word_cnt = len(Content.split())
     UN_DOCS_Paragraphs.at[index, 'word_cnt'] = word_cnt
     UN_DOCS_Paragraphs.at[index, 'Content_clean'] = Content
@@ -767,7 +732,6 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
 UN_DOCS_Paragraphs = UN_DOCS_Paragraphs.sort_values(by=['SourceFile', 'Index'])
 
 
-########################################## step 2: extracts the organization names at resolution level ##############################################
 UN_DOCS_Resolutions_Content = UN_DOCS_Paragraphs.loc[(UN_DOCS_Paragraphs.Type == 'Paragraph')].groupby(['SourceFile'])['Content'].apply(' '.join).reset_index()
 UN_DOCS_Resolutions_Content_clean = UN_DOCS_Paragraphs.loc[(UN_DOCS_Paragraphs.Type == 'Paragraph')].groupby(['SourceFile'])['Content_clean'].apply(' '.join).reset_index()
 UN_DOCS_Resolutions = pd.merge(UN_DOCS_Resolutions_Content, UN_DOCS_Resolutions_Content_clean, on='SourceFile')
@@ -780,45 +744,42 @@ for index, row in UN_DOCS_Resolutions.iterrows():
     if index % 100 == 0:
         print(index)
     Content_clean = row['Content_clean']
-    #Content_clean = re.sub(r'[^\x00-\x7F]+',' ', Content_clean) ## replace non-printable characters (such as \x02) with space
-    #Content_clean = ''.join(filter(lambda x:x in string.printable, Content_clean)) ## remove non-printable characters (such as \x02)
-    #known_orgs = [known_org for known_org in known_un_org_list if known_org.lower() in Content_clean.lower()]
     known_orgs = [known_org for known_org in known_un_org_list if known_org in Content_clean]
     UN_DOCS_Resolutions.at[index, 'Organization_Names_known'] = known_orgs
-    ### extracted orgs
+
     extracted_orgs = list(set([str(element) for element in spacy_nlp(Content_clean).ents if element.label_ == 'ORG']))
     extracted_orgs = [org for org in extracted_orgs if all(char not in org for char in ['_', '/', '.'])]
     for i in range(len(extracted_orgs)):
-        extracted_org = extracted_orgs[i].translate(str.maketrans('', '', string.digits)) ## remove digits 
-        extracted_org = extracted_org.translate(str.maketrans('', '', ',;:.()'))  ## remove common punctuations
-        if extracted_org.lower().startswith('the '): ### if extracted org starts with "the ", then remove the trailing "the "
+        extracted_org = extracted_orgs[i].translate(str.maketrans('', '', string.digits)) 
+        extracted_org = extracted_org.translate(str.maketrans('', '', ',;:.()')) 
+        if extracted_org.lower().startswith('the '): 
             extracted_orgs[i] = extracted_org[4:]
     extracted_orgs = list(set(extracted_orgs))   
 
     Organization_Names_not_from_known_orginal = []
     for org in extracted_orgs:
         if (
-                len(org.split()) > 1 ### at least 2 words
+                len(org.split()) > 1 
                 and (org not in known_un_org_list)
-                and (not org.lower().split()[-1] in stop_words) ## the last word of extracted org name is not stop-word
-                and ((not any(key_word.lower() in org.lower() for key_word in key_words_not_un_org_list)) or (any(key_word.lower() in org.lower() for key_word in key_words_un_org_list))) ## the extracted org name doesn't contain the words from key_words_not_un_org_list
-                and (max([org.lower() in known_org.lower() for known_org in known_un_org_list]) == False) ## the extracted org name is not substring of any known orgs (example: known_org: "United Nations Multidimensional Integrated Stabilization Mission in Mali", extracted_org: "United Nations Multidimensional Integrated Stabilization Mission")
-                #and (max([known_org.lower() in org.lower() for known_org in known_un_org_list]) == False) ## any known org names is not substring of the extracted org name (example: known_org: "Security Council", extracted_org: "the Security Council")
-                and (max([org.lower().split()[0] in [word for word in operative_verb_list if word.endswith('s')]]) == 0) ## the extracted org doesn't start with the word from operative verb list such as "accepts"
-                and (max([word in preambular_verb_list for word in org.lower().split()]) == 0) ## the extracted org doesn't contain the word from preambular verb list
-                and (' of the ' not in org)  ## the extracted org not containing the word "of the"
+                and (not org.lower().split()[-1] in stop_words) 
+                and ((not any(key_word.lower() in org.lower() for key_word in key_words_not_un_org_list)) or (any(key_word.lower() in org.lower() for key_word in key_words_un_org_list)))
+                and (max([org.lower() in known_org.lower() for known_org in known_un_org_list]) == False) 
+                #and (max([known_org.lower() in org.lower() for known_org in known_un_org_list]) == False)
+                and (max([org.lower().split()[0] in [word for word in operative_verb_list if word.endswith('s')]]) == 0)
+                and (max([word in preambular_verb_list for word in org.lower().split()]) == 0)
+                and (' of the ' not in org) 
                 ):
             Organization_Names_not_from_known_orginal.append(org)  
         elif (
-                len(org.split()) > 1 ### at least 2 words
+                len(org.split()) > 1 
                 and (org not in known_un_org_list)
-                and (not org.lower().split()[-1] in stop_words) ## the last word of extracted org name is not stop-word
-                and ((not any(key_word.lower() in org.lower() for key_word in key_words_not_un_org_list)) or (any(key_word.lower() in org.lower() for key_word in key_words_un_org_list))) ## the extracted org name doesn't contain the words from key_words_not_un_org_list
-                and (max([org.lower() in known_org.lower() for known_org in known_un_org_list]) == False) ## the extracted org name is not substring of any known orgs (example: known_org: "United Nations Multidimensional Integrated Stabilization Mission in Mali", extracted_org: "United Nations Multidimensional Integrated Stabilization Mission")
-                #and (max([known_org.lower() in org.lower() for known_org in known_un_org_list]) == False) ## any known org names is not substring of the extracted org name (example: known_org: "Security Council", extracted_org: "the Security Council")
-                and (max([org.lower().split()[0] in [word for word in operative_verb_list if word.endswith('s')]]) == 0) ## the extracted org doesn't start with the word from operative verb list such as "accepts"
-                and (max([word in preambular_verb_list for word in org.lower().split()]) == 0) ## the extracted org doesn't contain the word from preambular verb list
-                and (' of the ' in org)  ## the extracted org contains the word "of the"
+                and (not org.lower().split()[-1] in stop_words) 
+                and ((not any(key_word.lower() in org.lower() for key_word in key_words_not_un_org_list)) or (any(key_word.lower() in org.lower() for key_word in key_words_un_org_list))) 
+                and (max([org.lower() in known_org.lower() for known_org in known_un_org_list]) == False)
+                #and (max([known_org.lower() in org.lower() for known_org in known_un_org_list]) == False)
+                and (max([org.lower().split()[0] in [word for word in operative_verb_list if word.endswith('s')]]) == 0) 
+                and (max([word in preambular_verb_list for word in org.lower().split()]) == 0) 
+                and (' of the ' in org)  
                 ):
             org_split = org.split(' of the ')
             if (org_split[0] not in known_un_org_list) and (len(org_split[0].split()) > 1) and (org_split[1] in known_un_org_list):
@@ -830,8 +791,8 @@ for index, row in UN_DOCS_Resolutions.iterrows():
 
     UN_DOCS_Resolutions.at[index, 'Organization_Names_not_from_known_orginal'] = Organization_Names_not_from_known_orginal
     
-    ## make inference of organization names from known list
-    if (len(known_orgs) > 0): ## only make inference if there are known_orgs appeared in the same resolution
+
+    if (len(known_orgs) > 0): 
         for org in UN_DOCS_Resolutions.at[index, 'Organization_Names_not_from_known_orginal']:
             tokenized_word = word_tokenize(org)
             tokenized_word_lower = word_tokenize(org.lower())
@@ -840,7 +801,6 @@ for index, row in UN_DOCS_Resolutions.iterrows():
                 org_w2v = np.sum(w2v_google[words_in_vocab_lower], axis=0)
             else:
                 org_w2v = np.asarray([])
-            ## compare the common words and w2v_similarity with each org from the known_orgs
             common_words_length = []
             w2v_similarity = []
             for known_org in known_orgs:
@@ -854,20 +814,20 @@ for index, row in UN_DOCS_Resolutions.iterrows():
         
                 common_words = [word for word in tokenized_word if (word in known_org_tokenized_word and word[0].isupper())]
                 common_words_length.append(len(common_words))
-                if ((len(org_w2v) == 0) or (len(known_org_w2v) == 0)): ## org_w2v == 'na' or known_org_w2v == 'na'
+                if ((len(org_w2v) == 0) or (len(known_org_w2v) == 0)):
                     w2v_similarity.append(0)
                 else:
                     w2v_similarity.append(1 - spatial.distance.cosine(org_w2v, known_org_w2v))
             
-            if (max(common_words_length) == 0):  ## the extracted_org name has no common words with either of the known_org name
+            if (max(common_words_length) == 0): 
                 UN_DOCS_Resolutions.at[index, 'Organization_Names_not_from_known_inferred'].append((org, org))
             else:
-                if (len([l for l in common_words_length if l == max(common_words_length)]) == 1):  ## only one known_org has the longest common words with the extract_org
+                if (len([l for l in common_words_length if l == max(common_words_length)]) == 1): 
                     known_org_index = common_words_length.index(max(common_words_length))
                     similarity_score = w2v_similarity[known_org_index]
                     known_org = known_orgs[known_org_index]
                     UN_DOCS_Resolutions.at[index, 'Organization_Names_not_from_known_inferred'].append((org, known_org, similarity_score))
-                else:  ## there are multiple knwon_orgs that have the longest common words with the extracted_org
+                else: 
                     known_org_index = [i for i, x in enumerate(common_words_length) if x == max(common_words_length)]
                     max_similarity_score = max([w2v_similarity[index] for index in known_org_index])
                     max_similarity_known_org_index = w2v_similarity.index(max_similarity_score)
@@ -881,10 +841,6 @@ Organization_Names_not_from_known_cnt = Counter(Organization_Names_not_from_know
 Organization_Names_not_from_known_cnt = pd.DataFrame.from_dict(Organization_Names_not_from_known_cnt, orient='index').reset_index()
 Organization_Names_not_from_known_cnt = Organization_Names_not_from_known_cnt.rename(columns={'index':'org_names', 0:'count'}).sort_values(by='count', ascending=False).reset_index(drop=True)
 
-#UN_DOCS_Resolutions.to_excel(output_dir + 'Resolution_Level_organization_names_v1114.xlsx')
-#Organization_Names_not_from_known_cnt.to_excel(output_dir + 'Resolution_Level_organization_Names_not_from_known_cnt_v1114.xlsx', index=False)
-
-########################################## step 3: output the extracted organization names at paragraph level ##############################################
 
 UN_DOCS_Paragraphs['Country'] = [list() for x in range(len(UN_DOCS_Paragraphs.index))]
 UN_DOCS_Paragraphs['Organization_Names_known'] = [list() for x in range(len(UN_DOCS_Paragraphs.index))]
@@ -899,19 +855,15 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
     Organization_Names_known_Resolution = UN_DOCS_Resolutions.loc[UN_DOCS_Resolutions['SourceFile'] == SourceFile , 'Organization_Names_known'].tolist()[0]
     Organization_Names_not_from_known_orginal_Resolution = UN_DOCS_Resolutions.loc[UN_DOCS_Resolutions['SourceFile'] == SourceFile]['Organization_Names_not_from_known_orginal'].tolist()[0]
     Organization_Names_not_from_known_inferred_Resolution = UN_DOCS_Resolutions.loc[UN_DOCS_Resolutions['SourceFile'] == SourceFile]['Organization_Names_not_from_known_inferred'].tolist()[0]
-    ## country names
     Country = [country for country in country_names if country.lower() in Content_clean.lower()]
-    ## Organization_Names_known
     Organization_Names_known = []
     for org in Organization_Names_known_Resolution:
         if org.lower() in Content_clean.lower():
             Organization_Names_known.append(org)
-    ## Organization_Names_not_from_known_orginal
     Organization_Names_not_from_known_orginal = []
     for org in Organization_Names_not_from_known_orginal_Resolution:
         if org in Content_clean:
-            Organization_Names_not_from_known_orginal.append(org)      
-    ## Organization_Names_not_from_known_inferred
+            Organization_Names_not_from_known_orginal.append(org)     
     Organization_Names_not_from_known_inferred = []
     if len(Organization_Names_not_from_known_inferred_Resolution) >= 1:
         for org in Organization_Names_not_from_known_inferred_Resolution:
@@ -923,6 +875,5 @@ for index, row in UN_DOCS_Paragraphs.iterrows():
     UN_DOCS_Paragraphs.at[index, 'Organization_Names_not_from_known_inferred'] = Organization_Names_not_from_known_inferred
 
 UN_DOCS_Paragraphs = UN_DOCS_Paragraphs.drop(columns=['word_cnt', 'Content_clean'])
-
 UN_DOCS_Paragraphs.to_excel(output_dir + 'output_UN_DOCS_paragraph_level.xlsx')
 
