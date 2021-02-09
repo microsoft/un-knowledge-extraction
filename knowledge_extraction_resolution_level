@@ -31,21 +31,21 @@ UN_DOCS_resolution_level['Resolutuion_Adoption_Month'] = ''
 UN_DOCS_resolution_level['Resolutuion_Adoption_Year'] = ''
 
 for index, row in UN_DOCS_resolution_level.iterrows():
-    Resolution_Info = [''] * 5  ## corresponds to ['Resolutuion_Session', 'Resolutuion_Agenda_item', 'Resolutuion_Code', 'Resolutuion_Title', 'Resolutuion_DateMonthYear']
+    Resolution_Info = [''] * 5 
     SourceFile = row['SourceFile']    
     SourceFile_info_paragraphs = UN_DOCS.loc[UN_DOCS['SourceFile'] == SourceFile].sort_values(by=['Index']).fillna('').reset_index(drop=True)
     for i in range(len(SourceFile_info_paragraphs)):
         Content = SourceFile_info_paragraphs.loc[i,'Content']
         Type = SourceFile_info_paragraphs.loc[i,'Type']
-        if(Resolution_Info[0] == '' and Type == 'Session'):  ## session
+        if(Resolution_Info[0] == '' and Type == 'Session'): 
             Resolution_Info[0] = Content
-        elif(Resolution_Info[1] == '' and Type == 'AgendaItem'): ## Agenda item
+        elif(Resolution_Info[1] == '' and Type == 'AgendaItem'): 
                 Resolution_Info[1] = Content
         elif(Resolution_Info[2] == '' and Resolution_Info[3] == '' and re.match('(\d+/\d+)\s{0,1}\.\s{0,1}(.*)', Content)):
-            Resolution_Info[2] = re.match('(\d+/\d+)\s{0,1}\.\s{0,1}(.*)',Content).groups()[0]  ## code
-            Resolution_Info[3] = re.match('(\d+/\d+)\s{0,1}\.\s{0,1}(.*)',Content).groups()[1]  ## title
+            Resolution_Info[2] = re.match('(\d+/\d+)\s{0,1}\.\s{0,1}(.*)',Content).groups()[0]
+            Resolution_Info[3] = re.match('(\d+/\d+)\s{0,1}\.\s{0,1}(.*)',Content).groups()[1] 
         elif(Resolution_Info[4] == '' and re.match('(.*)on (\d{1,2}\s\w+\s\d{4})$', Content)):
-            Resolution_Info[4] = re.match('(.*)on (\d{1,2}\s\w+\s\d{4})$', Content).groups()[1]  ## date
+            Resolution_Info[4] = re.match('(.*)on (\d{1,2}\s\w+\s\d{4})$', Content).groups()[1] 
     UN_DOCS_resolution_level.iloc[index]['Resolutuion_Session'] =  Resolution_Info[0]
     UN_DOCS_resolution_level.iloc[index]['Resolutuion_Agenda_item'] = Resolution_Info[1]
     UN_DOCS_resolution_level.iloc[index]['Resolutuion_Number'] = Resolution_Info[2]
