@@ -1,13 +1,32 @@
 # Automatic Information Extraction and Knowledge Elicitation for United Nations Documents
 
-### Context: 
+#### Context: 
 The processing of considerable and rapidly growing amount of information within UN system is left to the very limited human capacities. The UN system produces a substantial amount of information that, if effectively mobilized, could greatly enhance the effectiveness and efficiency of the UN system.
 
-## Goal: 
+#### Goal: 
 The goal is to pilot Microsoft Cognitive Services to unlock the strategic value of UN unstructured content by building on AI and semantic technologies. The idea is to showcase the innovative smart services that natural language processing and machine learning to effectively support policy and decision making, coordination, synergies and accountability.
 
-## Data: 
+#### Data: 
 UN General Assembly Resolutions (English only) between 2009 and 2018. In total 3138 resolution files in pdf format.
+
+####	Deliverables:
+Resolution Level:
+o	Resolution File Name
+o	Resolution Session 
+o	Resolution Agenda Item
+o	Resolution Number
+o	Resolution Title
+o	Resolution Adoption Date/Month/Year
+•	Paragraph Level:
+o	Paragraph Type
+o	First Action Verb
+o	Key Terms
+o	Referenced Resolutions
+o	Referenced Resolution Dates
+o	Sustainable Development Goals (SDG), Targets, and Indicators
+o	Country
+o	Organization Names
+
 
 ## Contributing
 
