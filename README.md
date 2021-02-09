@@ -9,7 +9,7 @@ The goal is to pilot Microsoft Cognitive Services to unlock the strategic value 
 #### Data: 
 UN General Assembly Resolutions (English only) between 2009 and 2018. In total 3138 resolution files in pdf format.
 
-####	Deliverables:
+#### Deliverables:
 ##### Resolution Level:
 	Resolution File Name
 	Resolution Session 
@@ -19,14 +19,14 @@ UN General Assembly Resolutions (English only) between 2009 and 2018. In total 3
 	Resolution Adoption Date/Month/Year
 
 ##### Paragraph Level:
-o	Paragraph Type
-o	First Action Verb
-o	Key Terms
-o	Referenced Resolutions
-o	Referenced Resolution Dates
-o	Sustainable Development Goals (SDG), Targets, and Indicators
-o	Country
-o	Organization Names
+	Paragraph Type
+	First Action Verb
+	Key Terms
+	Referenced Resolutions
+	Referenced Resolution Dates
+	Sustainable Development Goals (SDG), Targets, and Indicators
+	Country
+	Organization Names
 
 
 ## Contributing
