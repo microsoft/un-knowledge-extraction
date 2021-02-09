@@ -1,12 +1,6 @@
-#
-# extract_spectrograms.py
-#
-# Load detection labels, extract audio for detection and non-detection regions,
-# compute and save spectrograms.
-#
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
-#
+
 
 #%% Imports
 
