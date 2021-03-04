@@ -31,7 +31,22 @@ pre-trained word2vec embeddings trained on part of Google News dataset (about 10
 	Country
 	Organization Names
 
-#### Setup
+
+
+# Setup
+
+1. Install requirements
+    
+    This code use python 3.7
+
+     ```
+     pip install -r requirements.txt
+     
+     ```
+
+
+2. Run Scripts
+
 
 
 ## Contributing
