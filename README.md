@@ -46,8 +46,18 @@ pre-trained word2vec embeddings trained on part of Google News dataset (about 10
 
 
 2. Run Scripts
-
-
+ a. Run the following file for extracting resolution level information: [knowledge_extraction_resolution_level.py](https://github.com/microsoft/UN-Knowledge-Extraction/blob/main/knowledge_extraction_resolution_level.py)
+    
+      ```
+      python knowledge_extraction_resolution_level.py
+      
+      ```
+ b. Run the following file for extracting paragraph level information: [knowledge_extraction_paragraph_level.py](https://github.com/microsoft/UN-Knowledge-Extraction/blob/main/knowledge_extraction_paragraph_level.py)
+    
+      ```
+      python knowledge_extraction_paragraph_level.py
+      
+      ```
 
 ## Contributing
 
