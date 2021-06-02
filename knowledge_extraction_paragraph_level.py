@@ -23,8 +23,8 @@ import difflib
 stop_words = set(stopwords.words('english'))
 
 current_dir = './UN_Knowledge_Extraction/'
-data_dir = current_dir + "Data/"
-output_dir = current_dir + "Output/"
+data_dir = current_dir + "data/"
+output_dir = current_dir + "output/"
 
 UN_DOCS_Paragraphs = pd.read_csv(data_dir + "UN_RES_DOCS_2009_2018.csv").fillna('').reset_index(drop=True)
 w2v_google = gensim.models.KeyedVectors.load_word2vec_format(data_dir + 'GoogleNews-vectors-negative300.bin.gz', binary=True)

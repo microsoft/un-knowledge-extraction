@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSnA.WebJob.DocumentParser", "DSnA.WebJob.DocumentParser\DSnA.WebJob.DocumentParser.csproj", "{9E4D7884-0C36-429B-A4C9-1217D3CA7D4E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9E4D7884-0C36-429B-A4C9-1217D3CA7D4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E4D7884-0C36-429B-A4C9-1217D3CA7D4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E4D7884-0C36-429B-A4C9-1217D3CA7D4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E4D7884-0C36-429B-A4C9-1217D3CA7D4E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {202AC18B-E457-427C-B60C-2D7A1D2E6319}
+	EndGlobalSection
+EndGlobal

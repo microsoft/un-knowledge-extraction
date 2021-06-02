@@ -7,8 +7,8 @@ import pandas as pd
 import re
 
 current_dir = './UN_Knowledge_Extraction/'
-data_dir = current_dir + "Data/"
-output_dir = current_dir + "Output/"
+data_dir = current_dir + "data/"
+output_dir = current_dir + "output/"
 
 
 UN_DOCS = pd.read_csv(data_dir + "UN_RES_DOCS_2009_2018.csv") 
