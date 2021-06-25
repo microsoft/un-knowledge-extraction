@@ -35,7 +35,7 @@ namespace DSnA.WebJob.DocumentParser
         void CheckAllQueueExists(List<CloudQueue> queueList);
         string DownloadBlobFile(string blobUri, string locationToSave, CloudBlobClient blobClient);
         bool CheckUriIsValid(string inputUri);
-        string ConvertPdfToWord(string file, string directoryToSave);
+        string ConvertPdfToWord(string file, string directoryToSave, Application wordApp);
         JsonDocumentStruct PrepareErrorJsonDoc(string fileLocation, Exception exp);
         Tuple<int, int> FindTableWithHeader(Document wordDocToExtract, List<string> tableHeaders);
         CloudBlobClient CreateCloudBlobClient(CloudStorageAccount StorageAccount);
@@ -357,11 +357,9 @@ namespace DSnA.WebJob.DocumentParser
         /// </summary>
         /// <param name="file"></param>
         /// <returns>location of converted/saved word doc</returns>
-        public string ConvertPdfToWord(string file, string directoryToSave)
+        public string ConvertPdfToWord(string file, string directoryToSave, Application wordApp)
         {
             Document pdfAsWordDoc = null;
-            // fire up word instance
-            Application wordApp = iInteropWordUtils.CreateWordAppInstance();
             try
             {
                 if (!iFileSystem.Directory.Exists(directoryToSave))
@@ -380,8 +378,6 @@ namespace DSnA.WebJob.DocumentParser
             {
                 // Close without saving and release resources
                 pdfAsWordDoc?.Close(SaveChanges: false);
-                // Forcefully collect discarded Interop COM objects
-                iInteropWordUtils.DisposeIneropObject(wordApp);
             }
         }
 

@@ -91,4 +91,58 @@ namespace DSnA.WebJob.DocumentParser
             Write(message, EventLogEntryType.Error, exp);
         }
     }
+    public class ConsoleLogger : ILogger
+    {
+        private static ConsoleLogger LoggerInstance;
+        private ConsoleLogger() { }
+
+
+        public static ConsoleLogger Instance
+        {
+            get
+            {
+                if (LoggerInstance == null)
+                {
+                    LoggerInstance = new ConsoleLogger();
+                }
+                return LoggerInstance;
+            }
+        }
+
+        /// <summary>
+        /// Write log text (info/error) to Azure Blob
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="category"></param>
+        /// <param name="exp"></param>
+        private void Write(string message, EventLogEntryType category, Exception exp = null)
+        {
+            Console.WriteLine($"{category}: {message}");
+
+            if (exp != null)
+            {
+                Console.WriteLine(exp.Message);
+                Console.WriteLine(exp.StackTrace);
+            }
+        }
+
+        /// <summary>
+        /// Logs information text
+        /// </summary>
+        /// <param name="message"></param>
+        public void Info(string message)
+        {
+            Write(message, EventLogEntryType.Information);
+        }
+
+        /// <summary>
+        /// Logs Exception text
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="exp"></param>
+        public void Error(string message, Exception exp)
+        {
+            Write(message, EventLogEntryType.Error, exp);
+        }
+    }
 }

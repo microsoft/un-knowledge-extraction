@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Office.Interop.Word;
 
@@ -11,7 +12,7 @@ namespace DSnA.WebJob.DocumentParser
 {
     public interface IParseHelper
     {
-        DocumentContent ExtractDocumentContent(string docFile);
+        DocumentContent ExtractDocumentContent(string docFile, Application wordApp);
     }
 
     public class ParseHelper : IParseHelper
@@ -50,8 +51,11 @@ namespace DSnA.WebJob.DocumentParser
                 var fullContent = string.Empty;
                 var paragraphs = new Dictionary<int, string>();
                 var sections = new Dictionary<int, string>();
+
                 List<Clauses> clauses = new List<Clauses>();
                 List<Clauses> headerClauses = new List<Clauses>();
+                List<string> additionalInformation = new List<string>();
+
                 foreach (Paragraph para in wordDocToExtract.Paragraphs)
                 {
                     var text = para.Range.Text;
@@ -95,13 +99,13 @@ namespace DSnA.WebJob.DocumentParser
                         headerClauses.Last().Content += text;
                     }
 
-                    if (listParagraphs.Count>0 && listParagraphs.ContainsKey(textStart))
+                    if (listParagraphs.Count > 0 && listParagraphs.ContainsKey(textStart))
                     {
                         if(!string.IsNullOrEmpty(cleanText))
                         {
                             sections.Add(textStart, text);
                         }
-                 
+
                         if (clauses.Count > 0)
                         {
                             clauses.Last().End = textStart - 1;
@@ -119,7 +123,7 @@ namespace DSnA.WebJob.DocumentParser
                             var nextPara = para.Next();
 
                             if (nextPara != null)
-                            {                      
+                            {
                                 clauses.Last().End = nextPara.Range.End;
                                 clauses.Last().Content += nextPara?.Range?.Text ?? string.Empty;
                             }
@@ -162,6 +166,68 @@ namespace DSnA.WebJob.DocumentParser
                     headers.Add(-1, string.Empty);
                 }
 
+                StringBuilder rangesContent = new StringBuilder();
+                List<Tuple<int, int>> ranges = new List<Tuple<int, int>>();
+                List<WdStoryType> rangeTypes = new List<WdStoryType>();
+
+                foreach (Range range in wordDocToExtract.StoryRanges)
+                {
+                    Range currentRange = range;
+
+                    do
+                    {
+                        if (RangeStoryTypeIsHeaderOrFooter(currentRange) &&
+                            CurrentRangeHaveShapeRanges(currentRange))
+                        {
+                            foreach (Shape shape in currentRange.ShapeRange)
+                            {
+                                if (shape.TextFrame.HasText == 0)
+                                {
+                                    continue;
+                                }
+
+                                Range shapeRange = shape.TextFrame.TextRange;
+
+                                rangesContent.Append(RemoveLineBreaks(shapeRange.Text));
+                                ranges.Add(new Tuple<int, int>(shapeRange.Start, shapeRange.End));
+                                rangeTypes.Add(currentRange.StoryType);
+                            }
+                        }
+                        else
+                        {
+                            rangesContent.Append(RemoveLineBreaks(currentRange.Text));
+                            ranges.Add(new Tuple<int, int>(currentRange.Start, currentRange.End));
+                            rangeTypes.Add(currentRange.StoryType);
+                        }
+
+                        bool hasMatch = false;
+                        MatchCollection matches = Constants.RegexExp.SessionRegEx.Matches(rangesContent.ToString());
+
+                        foreach (Match match in matches)
+                        {
+                            additionalInformation.Add($"{string.Join("\t", rangeTypes.Select(x => x.ToString()))}|{string.Join("\t", ranges.Select(x => $"{{{x.Item1},{x.Item2}}}"))}|{match.Index}|{match.Value}");
+                            hasMatch = true;
+                        }
+
+                        matches = Constants.RegexExp.AgendaItemRegEx.Matches(rangesContent.ToString());
+
+                        foreach (Match match in matches)
+                        {
+                            additionalInformation.Add($"{string.Join("\t", rangeTypes.Select(x => x.ToString()))}|{string.Join("\t", ranges.Select(x => $"{{{x.Item1},{x.Item2}}}"))}|{match.Index}|{match.Value}");
+                            hasMatch = true;
+                        }
+
+                        if (hasMatch)
+                        {
+                            rangesContent.Clear();
+                            ranges.Clear();
+                            rangeTypes.Clear();
+                        }
+
+                        currentRange = currentRange.NextStoryRange;
+                    } while (currentRange != null);
+                }
+
                 return new DocumentContent()
                 {
                     Text = fullContent,
@@ -169,7 +235,8 @@ namespace DSnA.WebJob.DocumentParser
                     Sections = sections,
                     Clauses = clauses,
                     Headers = headers,
-                    HeaderClauses = headerClauses
+                    HeaderClauses = headerClauses,
+                    AdditionalInformation = additionalInformation
                 };
             }
             catch (Exception exception)
@@ -178,26 +245,54 @@ namespace DSnA.WebJob.DocumentParser
             }
         }
 
+        public static string RemoveLineBreaks(string text)
+        {
+            if (text == "\n"
+                || text == "\r\n")
+            {
+                return " ";
+            }
+
+            return text
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
+        }
+
+        private static bool RangeStoryTypeIsHeaderOrFooter(Range range)
+        {
+            return (range.StoryType == WdStoryType.wdEvenPagesHeaderStory ||
+                    range.StoryType == WdStoryType.wdPrimaryHeaderStory ||
+                    range.StoryType == WdStoryType.wdEvenPagesFooterStory ||
+                    range.StoryType == WdStoryType.wdPrimaryFooterStory ||
+                    range.StoryType == WdStoryType.wdFirstPageHeaderStory ||
+                    range.StoryType == WdStoryType.wdFirstPageFooterStory);
+        }
+
+        private static bool CurrentRangeHaveShapeRanges(Range range)
+        {
+            return range.ShapeRange.Count > 0;
+        }
+
         /// <summary>
         /// Extracts content (red flags, company name, report date) from document
         /// </summary>
         /// <param name="docFile"></param>
         /// <returns>document content</returns>
-        public DocumentContent ExtractDocumentContent(string docFile)
+        public DocumentContent ExtractDocumentContent(string docFile, Application wordApp)
         {
-            // start up MS Word application instance
-            Application wordApp = iInteropWordUtils.CreateWordAppInstance();
             Document wordDocToExtract = null;
+
             try
             {
                 DocumentContent docContent = new DocumentContent();
-                // open the doucmnet only in read only mode - so that no edits are made on the document
+                // open the document only in read only mode - so that no edits are made on the document
                 wordDocToExtract = iInteropWordUtils.OpenDocument(docFile, wordApp);
                 var tableContent = ExtractTableContent(wordDocToExtract);
                 // Extract paragraph
                 var listParagraphs = ExtractListPragraphs(wordDocToExtract);
                 var headers = ExtractHeaders(wordDocToExtract, tableContent, listParagraphs);
                 docContent = ExtractAllParagraphs(wordDocToExtract, headers, tableContent, listParagraphs);
+
                 return docContent;
             }
             catch (Exception exception)
@@ -208,8 +303,6 @@ namespace DSnA.WebJob.DocumentParser
             {
                 // Close without saving and release resources
                 wordDocToExtract?.Close(SaveChanges: false);
-                // Forcefully collect discarded Interop COM objects
-                iInteropWordUtils.DisposeIneropObject(wordApp);
             }
         }
 
@@ -290,7 +383,7 @@ namespace DSnA.WebJob.DocumentParser
                     try
                     {
                         var textStart = para.Range.Start;
-                        if (listParagraphs.Count> 0 && textStart <= listParagraphs.Keys.Max() && textStart >= listParagraphs.Keys.Min())
+                        if (listParagraphs.Count > 0 && textStart <= listParagraphs.Keys.Max() && textStart >= listParagraphs.Keys.Min())
                         {
                             continue;
                         }

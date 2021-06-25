@@ -4,14 +4,44 @@
 namespace DSnA.WebJob.DocumentParser
 {
     using System;
+    using System.Text.RegularExpressions;
+
     public static class Constants
     {
         public static string DateTimeFormat => "MM-dd-yyyy_HH-mm-ss";
         public static class FileConfigs
         {
-            public static string SourceDirectoryPath => @"C:\data\DocParsing";// @"%HOME%\data\";//
-            public static string WorkingDirectoryPath => @"C:\data\DocParsing\Temp";//  @"%HOME%\data\tempForProcessing";//
-            public static string OutputDirectoryPath => SourceDirectoryPath + @"\Output";
+            private static string _sourceDirectoryPath;
+            private static string _outputDirectoryPath;
+
+            public static string SourceDirectoryPath
+            {
+                get
+                {
+                    return _sourceDirectoryPath;
+                }
+
+                set { _sourceDirectoryPath = string.Format(@"{0}", value); }
+            }
+
+            public static string OutputDirectoryPath
+            {
+                get
+                {
+                    return string.IsNullOrEmpty(_outputDirectoryPath) ? @"\DocumentParser" : _outputDirectoryPath;
+                }
+
+                set { _outputDirectoryPath = string.Format(@"{0}", value); }
+            }
+
+            public static string WorkingDirectoryPath
+            {
+                get
+                {
+                    return OutputDirectoryPath + @"\Temp";
+                }
+            }
+
             public static string LogFileName = "log_" + DateTime.UtcNow.ToString("MM-dd-yyyy") + ".log";
             public static string TempFileName => "JsonByExtractionProgram";
         }
@@ -33,6 +63,8 @@ namespace DSnA.WebJob.DocumentParser
             public static string HasNumbers => @"^(?=.*[0-9])";
 
             public static string HasBulletPoint => @"^(|\u2022|\u2023|\u25E6|\u2043|\u2219|-|[a-z]\)|[a-z]\.)";
+            public static readonly Regex SessionRegEx = new Regex(@"(\w)*(-)?(\w)*(\s)*(session)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            public static readonly Regex AgendaItemRegEx = new Regex(@"(agenda)(\s)+(item)+(s)?(\s)+(\d)*(\s)*(and)*(\s)*([a-fA-F0-9\(\)])*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         }
 
         public static class ParserConfig
@@ -60,6 +92,7 @@ namespace DSnA.WebJob.DocumentParser
             public static string ContentTypeSection => "Section";
             public static string ContentTypeClause => "Clause";
             public static string ContentTypeHeaderClause => "HeaderClause";
+            public static string ContentTypeAdditionalInformation => "AdditionalInformation";
         }
     }
 }

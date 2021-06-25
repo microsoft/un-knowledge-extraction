@@ -6,13 +6,10 @@ using System.IO;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Microsoft.Office.Interop.Word;
 
 namespace DSnA.WebJob.DocumentParser
 {
-    public interface IDocumentParser
-    {
-        string ParseDocuments(string blobUri, string outputFileFormat, CloudBlobClient blobClient);
-    }
     public class DocumentParser : IDocumentParser
     {
         private readonly ILogger iLogger;
@@ -29,7 +26,7 @@ namespace DSnA.WebJob.DocumentParser
         /// <summary>
         /// Main API for document extraction
         /// </summary>
-        public string ParseDocuments(string blobUri, string outputFileFormat, CloudBlobClient blobClient)
+        public string ParseDocuments(string uri, IStorageClient storageClient, Application wordApp, string outputFileFormat)
         {
             try
             {
@@ -37,16 +34,16 @@ namespace DSnA.WebJob.DocumentParser
                 var output = "";
                 try
                 {
-                    fileLocation = iUtils.DownloadBlobFile(blobUri, Constants.FileConfigs.WorkingDirectoryPath, blobClient);
-                    var result = ExtractContentFromReports(fileLocation, outputFileFormat, blobUri);
-                    iUtils.UploadFileToBlob(result.location, blobClient);
+                    fileLocation = storageClient.GetFile(new StorageObjectDescriptor() { Uri = new Uri(uri) }, Constants.FileConfigs.WorkingDirectoryPath);
+                    var result = ExtractContentFromReports(fileLocation, outputFileFormat, uri, wordApp);
+                    storageClient.SaveFile(result.location, null);
                     output = $"Finished Processing: {result.location}";
                     iUtils.DeleteInputFiles(new List<string> { result.location });
                 }
                 catch (Exception exp)
                 {
-                    iLogger.Error($"Error Processing: {blobUri}", exp);
-                    output = $"error processing: {blobUri}";
+                    iLogger.Error($"Error Processing: {uri}", exp);
+                    output = $"error processing: {uri}";
                 }
 
                 return output;
@@ -69,20 +66,20 @@ namespace DSnA.WebJob.DocumentParser
         /// <param name="fileLocation"></param>
         /// <param name="queueMessage"></param>
         /// <returns>saved JSON output file location</returns>
-        private ReportExtractionResponse ExtractContentFromReports(string fileLocation, string outputFileFormat, string blobUri = null)
+        private ReportExtractionResponse ExtractContentFromReports(string fileLocation, string outputFileFormat, string originalFileLocation = null, Application wordApp = null)
         {
             var docFile = "";
             try
             {
-                docFile = iUtils.ConvertPdfToWord(fileLocation, Constants.FileConfigs.WorkingDirectoryPath);
-                var documentContent = iparseHelper.ExtractDocumentContent(docFile);
+                docFile = iUtils.ConvertPdfToWord(fileLocation, Constants.FileConfigs.WorkingDirectoryPath, wordApp);
+                var documentContent = iparseHelper.ExtractDocumentContent(docFile, wordApp);
                 ReportExtractionResponse reportExtractionResponse = null;
                 switch (outputFileFormat)
                 {
                     case Constants.CsvFileConfig.JsonFileFormat:
                         JsonDocumentStructFlat jsonDoc;
                         string jsonOutputFileLocation;
-                        ExtractAsJsonFormat(fileLocation, blobUri, documentContent, out jsonDoc, out jsonOutputFileLocation);
+                        ExtractAsJsonFormat(fileLocation, originalFileLocation, documentContent, out jsonDoc, out jsonOutputFileLocation);
                         reportExtractionResponse = new ReportExtractionResponse()
                         {
                             location = jsonOutputFileLocation,
@@ -93,7 +90,7 @@ namespace DSnA.WebJob.DocumentParser
                     case Constants.CsvFileConfig.CsvFileFormat:
                     default:
                         string csvOutputFileLocation;
-                        ExtractAsCsvFormat(fileLocation, blobUri, documentContent, out csvOutputFileLocation);
+                        ExtractAsCsvFormat(fileLocation, originalFileLocation, documentContent, out csvOutputFileLocation);
                         reportExtractionResponse = new ReportExtractionResponse()
                         {
                             location = csvOutputFileLocation
@@ -105,21 +102,23 @@ namespace DSnA.WebJob.DocumentParser
             }
             finally
             {
-                // delete input files - leave no trace of confidential documents
                 iUtils.DeleteInputFiles(new List<string> { fileLocation, docFile });
             }
         }
 
-        private void ExtractAsJsonFormat(string fileLocation, string blobUri, DocumentContent documentContent, out JsonDocumentStructFlat jsonDoc, out string jsonOutputFileLocation)
+
+        private void ExtractAsJsonFormat(string fileLocation, string originalFileLocation, DocumentContent documentContent, out JsonDocumentStructFlat jsonDoc, out string jsonOutputFileLocation)
         {
             jsonDoc = new JsonDocumentStructFlat();
-            jsonDoc.ImageStoreUri = blobUri;
+            jsonDoc.ImageStoreUri = originalFileLocation;
             jsonDoc.Text = documentContent.Text;
             jsonDoc.Paragraphs = documentContent.Paragraphs;
             jsonDoc.Headers = documentContent.Headers;
             jsonDoc.Sections = documentContent.Sections;
             jsonDoc.Clauses = documentContent.Clauses;
             jsonDoc.HeaderClauses = documentContent.HeaderClauses;
+            jsonDoc.AdditionalInformation = documentContent.AdditionalInformation;
+
             var fileProperties = iUtils.ExtractFileMetadata(fileLocation);
             jsonDoc.FileName = fileProperties.FileName;
             jsonDoc.FileType = fileProperties.FileType;
@@ -128,11 +127,11 @@ namespace DSnA.WebJob.DocumentParser
             jsonOutputFileLocation = iUtils.SerializeAndSaveJson(jsonDoc, Path.GetFileName(fileLocation));
         }
 
-        private void ExtractAsCsvFormat(string fileLocation, string blobUri, DocumentContent documentContent, out string csvOutputFileLocation)
+        private void ExtractAsCsvFormat(string fileLocation, string originalFileLocation, DocumentContent documentContent, out string csvOutputFileLocation)
         {
             CsvDocumentFile csvDocumentFile = new CsvDocumentFile();
             var fileProperties = iUtils.ExtractFileMetadata(fileLocation);
-            csvDocumentFile.AddCsvLine(fileProperties.FileName, blobUri, Constants.CsvFileConfig.ContentTypeBlobUri);
+            csvDocumentFile.AddCsvLine(fileProperties.FileName, originalFileLocation, Constants.CsvFileConfig.ContentTypeBlobUri);
             csvDocumentFile.AddCsvLine(fileProperties.FileName, fileProperties.AgreementNumber, Constants.CsvFileConfig.ContentTypeAgreementNumber);
             csvDocumentFile.AddCsvLine(fileProperties.FileName, fileProperties.FileType, Constants.CsvFileConfig.ContentTypeFileType);
             csvDocumentFile.AddCsvLine(fileProperties.FileName, fileProperties.ExtractionTimeStamp, Constants.CsvFileConfig.ContentTypeExtractionTimeStamp);
@@ -171,6 +170,13 @@ namespace DSnA.WebJob.DocumentParser
                 var headerClauseCleanText = iUtils.CleanTextFromNonAsciiChar(headerClause.Content);
                 if (!string.IsNullOrEmpty(headerClauseCleanText))
                     csvDocumentFile.AddCsvLine(fileProperties.FileName, headerClauseCleanText, Constants.CsvFileConfig.ContentTypeHeaderClause);
+            }
+
+            foreach (var additionalInformation in documentContent.AdditionalInformation)
+            {
+                var additionalInformationCleanText = iUtils.CleanTextFromNonAsciiChar(additionalInformation);
+                if (!string.IsNullOrEmpty(additionalInformationCleanText))
+                    csvDocumentFile.AddCsvLine(fileProperties.FileName, additionalInformationCleanText, Constants.CsvFileConfig.ContentTypeAdditionalInformation);
             }
 
             csvOutputFileLocation = iUtils.SaveToCsvFile(csvDocumentFile.GetCsvOutputLines(), Path.GetFileNameWithoutExtension(fileLocation));

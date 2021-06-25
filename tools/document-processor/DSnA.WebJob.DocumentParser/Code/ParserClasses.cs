@@ -50,6 +50,9 @@ namespace DSnA.WebJob.DocumentParser
 
         [JsonProperty(PropertyName = "headerClauses")]
         public List<Clauses> HeaderClauses { get; set; }
+
+        [JsonProperty(PropertyName = "additionalInformation")]
+        public List<string> AdditionalInformation { get; set; }
     }
 
     public class ReportExtractionResponse
@@ -113,6 +116,9 @@ namespace DSnA.WebJob.DocumentParser
 
         [JsonProperty(PropertyName = "headerClauses")]
         public List<Clauses> HeaderClauses { get; set; }
+
+        [JsonProperty(PropertyName = "additionalInformation")]
+        public List<string> AdditionalInformation { get; set; }
     }
 
     /// <summary>
